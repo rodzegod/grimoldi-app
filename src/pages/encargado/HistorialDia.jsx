@@ -77,7 +77,7 @@ export default function HistorialDia() {
               <div key={t.id} className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex justify-between items-center">
                 <div>
                   <p className="text-sm font-medium">{t.titulo}</p>
-                  <p className="text-xs text-gray-400">{t.tipo} · {t.turno} · {t.usuarios?.nombre ?? '—'}</p>
+                  <p className="text-xs text-gray-400">{t.tipo === 'Admin' ? 'Administrativo' : t.tipo} · {t.turno} · {t.usuarios?.nombre ?? '—'}</p>
                 </div>
                 <span className={`text-xs rounded-full px-2 py-0.5 ${
                   t.estado === 'completada' ? 'bg-emerald-100 text-emerald-700' :

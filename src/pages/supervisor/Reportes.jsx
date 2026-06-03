@@ -148,7 +148,7 @@ export default function Reportes() {
               <div key={i} className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex justify-between items-center">
                 <div>
                   <p className="text-sm font-medium">{d.titulo}</p>
-                  <p className="text-xs text-gray-400">{d.tipo} · {d.turno} · {d.usuarios?.nombre ?? '—'} · {d.fecha}</p>
+                  <p className="text-xs text-gray-400">{d.tipo === 'Admin' ? 'Administrativo' : d.tipo} · {d.turno} · {d.usuarios?.nombre ?? '—'} · {d.fecha}</p>
                 </div>
                 <span className={`text-xs rounded-full px-2 py-0.5 ${
                   d.estado === 'completada' ? 'bg-emerald-100 text-emerald-700' :

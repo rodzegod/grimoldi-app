@@ -8,10 +8,12 @@ export default function GestionZonas() {
   const [loading, setLoading] = useState(true)
   const [nuevaZona, setNuevaZona] = useState('')
   const [zonaActiva, setZonaActiva] = useState(null)
-  const [productos, setProductos] = useState([])
   const [asignados, setAsignados] = useState([])
   const [busqueda, setBusqueda] = useState('')
   const [resultados, setResultados] = useState([])
+  // descripcion inline edit
+  const [editandoDesc, setEditandoDesc] = useState(null) // producto_id
+  const [descTemp, setDescTemp] = useState('')
 
   useEffect(() => {
     if (localId) fetchZonas()
@@ -31,11 +33,7 @@ export default function GestionZonas() {
   async function crearZona(e) {
     e.preventDefault()
     if (!nuevaZona.trim()) return
-    await supabase.from('zonas').insert({
-      nombre: nuevaZona.trim(),
-      local_id: localId,
-      orden: zonas.length,
-    })
+    await supabase.from('zonas').insert({ nombre: nuevaZona.trim(), local_id: localId, orden: zonas.length })
     setNuevaZona('')
     fetchZonas()
   }
@@ -51,9 +49,10 @@ export default function GestionZonas() {
     setZonaActiva(zona.id)
     setBusqueda('')
     setResultados([])
+    setEditandoDesc(null)
     const { data } = await supabase
       .from('zona_productos')
-      .select(`producto_id, productos(id, codigo, modelo, medida, familia)`)
+      .select(`producto_id, productos(id, codigo, modelo, medida, familia, descripcion)`)
       .eq('zona_id', zona.id)
     setAsignados(data ?? [])
   }
@@ -71,32 +70,38 @@ export default function GestionZonas() {
   }
 
   async function asignarProducto(producto) {
-    const yaAsignado = asignados.some(a => a.producto_id === producto.id)
-    if (yaAsignado) return
-    await supabase.from('zona_productos').insert({
-      zona_id: zonaActiva,
-      producto_id: producto.id,
-    })
+    if (asignados.some(a => a.producto_id === producto.id)) return
+    await supabase.from('zona_productos').insert({ zona_id: zonaActiva, producto_id: producto.id })
     setResultados([])
     setBusqueda('')
     abrirZona({ id: zonaActiva })
   }
 
   async function desasignar(productoId) {
-    await supabase.from('zona_productos')
-      .delete()
-      .eq('zona_id', zonaActiva)
-      .eq('producto_id', productoId)
+    await supabase.from('zona_productos').delete().eq('zona_id', zonaActiva).eq('producto_id', productoId)
     abrirZona({ id: zonaActiva })
   }
 
-  const zonaActivaObj = zonas.find(z => z.id === zonaActiva)
+  function iniciarEditDesc(productoId, descActual) {
+    setEditandoDesc(productoId)
+    setDescTemp(descActual ?? '')
+  }
+
+  async function guardarDesc(productoId) {
+    await supabase.from('productos').update({ descripcion: descTemp || null }).eq('id', productoId)
+    setEditandoDesc(null)
+    // Actualizar localmente sin re-fetch completo
+    setAsignados(prev => prev.map(a =>
+      a.producto_id === productoId
+        ? { ...a, productos: { ...a.productos, descripcion: descTemp || null } }
+        : a
+    ))
+  }
 
   return (
     <div>
       <h1 className="text-xl font-bold mb-4">Gestión de Zonas</h1>
 
-      {/* Nueva zona */}
       <form onSubmit={crearZona} className="flex gap-2 mb-4">
         <input
           placeholder="Nombre de nueva zona..."
@@ -124,12 +129,8 @@ export default function GestionZonas() {
                 >
                   {zona.nombre}
                 </button>
-                <button
-                  onClick={() => eliminarZona(zona.id)}
-                  className="text-gray-300 hover:text-red-400 text-xl leading-none ml-3"
-                >
-                  ×
-                </button>
+                <button onClick={() => eliminarZona(zona.id)}
+                  className="text-gray-300 hover:text-red-400 text-xl leading-none ml-3">×</button>
               </div>
 
               {zonaActiva === zona.id && (
@@ -145,11 +146,8 @@ export default function GestionZonas() {
                     {resultados.length > 0 && (
                       <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl overflow-hidden z-10 divide-y shadow-lg">
                         {resultados.map(p => (
-                          <button
-                            key={p.id}
-                            onClick={() => asignarProducto(p)}
-                            className="w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50"
-                          >
+                          <button key={p.id} onClick={() => asignarProducto(p)}
+                            className="w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50">
                             <span className="font-mono text-xs text-gray-400 mr-2">{p.codigo}</span>
                             {p.modelo} · T{p.medida}
                           </button>
@@ -162,21 +160,51 @@ export default function GestionZonas() {
                   {asignados.length === 0 ? (
                     <p className="text-xs text-gray-400">Sin productos asignados</p>
                   ) : (
-                    <div className="space-y-1.5">
-                      {asignados.map(a => (
-                        <div key={a.producto_id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                          <div>
-                            <span className="font-mono text-xs text-gray-400 mr-2">{a.productos?.codigo}</span>
-                            <span className="text-sm">{a.productos?.modelo} · T{a.productos?.medida}</span>
+                    <div className="space-y-2">
+                      {asignados.map(a => {
+                        const p = a.productos
+                        const editando = editandoDesc === a.producto_id
+                        return (
+                          <div key={a.producto_id} className="bg-gray-50 rounded-xl px-3 py-2.5">
+                            <div className="flex items-center justify-between">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs text-gray-400">{p?.codigo}</span>
+                                  <span className="text-sm font-medium truncate">{p?.modelo} · T{p?.medida}</span>
+                                </div>
+                                {/* Descripción editable */}
+                                {editando ? (
+                                  <div className="flex items-center gap-2 mt-1.5">
+                                    <input
+                                      autoFocus
+                                      value={descTemp}
+                                      onChange={e => setDescTemp(e.target.value)}
+                                      placeholder="Ej: Remera manga corta azul talle M"
+                                      className="flex-1 text-xs border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:border-black"
+                                    />
+                                    <button onClick={() => guardarDesc(a.producto_id)}
+                                      className="text-xs bg-black text-white rounded-lg px-2 py-1">OK</button>
+                                    <button onClick={() => setEditandoDesc(null)}
+                                      className="text-xs text-gray-400">✕</button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => iniciarEditDesc(a.producto_id, p?.descripcion)}
+                                    className="mt-1 text-xs text-left w-full"
+                                  >
+                                    {p?.descripcion
+                                      ? <span className="text-gray-600">{p.descripcion}</span>
+                                      : <span className="text-gray-300 italic">+ agregar descripción</span>
+                                    }
+                                  </button>
+                                )}
+                              </div>
+                              <button onClick={() => desasignar(a.producto_id)}
+                                className="text-gray-300 hover:text-red-400 text-xl leading-none ml-3 shrink-0">×</button>
+                            </div>
                           </div>
-                          <button
-                            onClick={() => desasignar(a.producto_id)}
-                            className="text-gray-300 hover:text-red-400 text-lg leading-none"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>

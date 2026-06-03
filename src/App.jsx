@@ -16,6 +16,7 @@ import GestionTareas from './pages/encargado/GestionTareas'
 import BandejaIncidencias from './pages/encargado/BandejaIncidencias'
 import HistorialDia from './pages/encargado/HistorialDia'
 import GestionZonas from './pages/encargado/GestionZonas'
+import ReporteVentas from './pages/encargado/ReporteVentas'
 
 // Supervisor
 import Dashboard from './pages/supervisor/Dashboard'
@@ -83,11 +84,21 @@ export default function App() {
               <PageWrapper><GestionZonas /></PageWrapper>
             </ProtectedRoute>
           } />
+          <Route path="/encargado/ventas" element={
+            <ProtectedRoute roles={['encargado', 'admin']}>
+              <PageWrapper><ReporteVentas readOnly={false} /></PageWrapper>
+            </ProtectedRoute>
+          } />
 
           {/* Supervisor */}
           <Route path="/supervisor/dashboard" element={
             <ProtectedRoute roles={['supervisor']}>
               <PageWrapper><Dashboard /></PageWrapper>
+            </ProtectedRoute>
+          } />
+          <Route path="/supervisor/ventas" element={
+            <ProtectedRoute roles={['supervisor']}>
+              <PageWrapper><ReporteVentas readOnly={true} /></PageWrapper>
             </ProtectedRoute>
           } />
           <Route path="/supervisor/reportes" element={

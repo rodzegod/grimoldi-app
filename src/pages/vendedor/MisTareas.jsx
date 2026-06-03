@@ -13,6 +13,7 @@ const TIPO_COLOR = {
   Operativo: 'text-emerald-600',
   Liderazgo: 'text-purple-600',
 }
+const TIPO_LABEL = { Admin: 'Administrativo', Operativo: 'Operativo', Liderazgo: 'Liderazgo' }
 
 export default function MisTareas() {
   const { usuario } = useAuth()
@@ -126,7 +127,7 @@ function TareaCard({ tarea, onChange }) {
           </p>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className={`text-xs font-medium ${TIPO_COLOR[tarea.tipo] ?? 'text-gray-500'}`}>
-              {tarea.tipo}
+              {TIPO_LABEL[tarea.tipo] ?? tarea.tipo}
             </span>
             <span className={`text-xs border rounded-full px-2 py-0.5 ${PRIORIDAD_COLOR[tarea.prioridad] ?? ''}`}>
               {tarea.prioridad}
