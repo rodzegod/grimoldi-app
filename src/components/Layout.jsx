@@ -22,6 +22,7 @@ const NAV = {
   admin: [
     { to: '/admin/catalogo', label: 'Catálogo', icon: '⬆' },
     { to: '/admin/usuarios', label: 'Usuarios', icon: '◎' },
+    { to: '/encargado/zonas', label: 'Zonas', icon: '⊞' },
   ],
 }
 

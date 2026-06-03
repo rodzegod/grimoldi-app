@@ -79,7 +79,7 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="/encargado/zonas" element={
-            <ProtectedRoute roles={['encargado']}>
+            <ProtectedRoute roles={['encargado', 'admin']}>
               <PageWrapper><GestionZonas /></PageWrapper>
             </ProtectedRoute>
           } />

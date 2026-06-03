@@ -33,8 +33,10 @@ export default function MisTareas() {
       .eq('asignado_a', usuario.id)
       .eq('fecha', hoy)
       .in('turno', [turno, 'ambos'])
-      .order('prioridad', { ascending: true })
-    setTareas(data ?? [])
+      .order('created_at', { ascending: true })
+    const ORDEN = { Urgente: 0, Importante: 1, Relevante: 2 }
+    const sorted = (data ?? []).sort((a, b) => (ORDEN[a.prioridad] ?? 3) - (ORDEN[b.prioridad] ?? 3))
+    setTareas(sorted)
     setLoading(false)
   }
 

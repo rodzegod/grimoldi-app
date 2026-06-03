@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useLocal } from '../../hooks/useLocal'
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
 const ROLES = ['vendedor', 'encargado', 'supervisor', 'admin']
 const ROL_COLOR = {
   vendedor: 'bg-blue-100 text-blue-700',
@@ -18,6 +21,7 @@ export default function GestionUsuarios() {
   const [form, setForm] = useState({ email: '', nombre: '', password: '', rol: 'vendedor' })
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const [ok, setOk] = useState('')
 
   useEffect(() => {
     if (localId) fetchUsuarios()
@@ -38,33 +42,46 @@ export default function GestionUsuarios() {
     e.preventDefault()
     setGuardando(true)
     setError('')
+    setOk('')
 
-    // 1. Crear usuario en Auth
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: form.email,
-      password: form.password,
-      email_confirm: true,
+    // Signup via fetch directo — no reemplaza la sesión del admin
+    const signupRes = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: form.email, password: form.password }),
     })
 
-    if (authError) {
-      // auth.admin requiere service_role key — mostrar instrucción alternativa
-      setError('Creá el usuario desde el panel de Supabase Auth y luego insertalo en la tabla usuarios manualmente.')
+    const signupData = await signupRes.json()
+
+    if (!signupRes.ok || !signupData.id) {
+      const msg = signupData.msg || signupData.error_description || 'Error al crear la cuenta'
+      setError(msg)
       setGuardando(false)
       return
     }
 
-    // 2. Insertar en tabla usuarios
-    await supabase.from('usuarios').insert({
-      id: authData.user.id,
+    // Insertar en tabla usuarios usando la sesión del admin (RLS permite)
+    const { error: dbError } = await supabase.from('usuarios').insert({
+      id: signupData.id,
       email: form.email,
       nombre: form.nombre,
       rol: form.rol,
       local_id: localId,
     })
 
+    setGuardando(false)
+
+    if (dbError) {
+      setError('Cuenta creada en Auth pero no se pudo insertar el perfil: ' + dbError.message)
+      return
+    }
+
+    setOk(`Usuario ${form.nombre} creado. Que confirme su email antes de ingresar.`)
     setShowForm(false)
     setForm({ email: '', nombre: '', password: '', rol: 'vendedor' })
-    setGuardando(false)
     fetchUsuarios()
   }
 
@@ -78,23 +95,22 @@ export default function GestionUsuarios() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">Gestión de Usuarios</h1>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => { setShowForm(true); setError(''); setOk('') }}
           className="bg-black text-white text-sm rounded-xl px-4 py-2"
         >
           + Usuario
         </button>
       </div>
 
-      {/* Nota sobre creación */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-700">
-        Para crear usuarios, ir a{' '}
-        <strong>Supabase → Authentication → Users → Add user</strong>{' '}
-        y luego insertarlo en la tabla <code>usuarios</code> con su rol y local_id.
-      </div>
+      {ok && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 text-xs text-emerald-700">
+          ✓ {ok}
+        </div>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
-          <div className="bg-white rounded-t-2xl w-full max-w-lg p-5">
+          <div className="bg-white rounded-t-2xl w-full max-w-lg p-5 pb-8">
             <h2 className="font-bold mb-4">Nuevo usuario</h2>
             <form onSubmit={crearUsuario} className="space-y-3">
               <input
@@ -115,7 +131,8 @@ export default function GestionUsuarios() {
               <input
                 required
                 type="password"
-                placeholder="Contraseña temporal"
+                minLength={6}
+                placeholder="Contraseña (mín. 6 caracteres)"
                 value={form.password}
                 onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-black"
@@ -128,8 +145,8 @@ export default function GestionUsuarios() {
                   >{r}</button>
                 ))}
               </div>
-              {error && <p className="text-xs text-red-500">{error}</p>}
-              <div className="flex gap-2">
+              {error && <p className="text-xs text-red-500 bg-red-50 p-2 rounded-lg">{error}</p>}
+              <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => { setShowForm(false); setError('') }}
                   className="flex-1 border border-gray-200 rounded-xl py-3 text-sm"
                 >Cancelar</button>
@@ -148,6 +165,10 @@ export default function GestionUsuarios() {
         <div className="flex justify-center py-12">
           <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin" />
         </div>
+      ) : usuarios.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">
+          <p>No hay usuarios en este local todavía.</p>
+        </div>
       ) : (
         <div className="space-y-2">
           {usuarios.map(u => (
@@ -159,7 +180,7 @@ export default function GestionUsuarios() {
               <select
                 value={u.rol}
                 onChange={e => cambiarRol(u.id, e.target.value)}
-                className={`text-xs font-medium rounded-full px-2 py-1 border-0 ${ROL_COLOR[u.rol]} appearance-none cursor-pointer`}
+                className={`text-xs font-medium rounded-full px-3 py-1 border-0 cursor-pointer ${ROL_COLOR[u.rol]}`}
               >
                 {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
