@@ -37,8 +37,38 @@ export default function GestionTareas() {
   const [derivandoOk, setDerivandoOk] = useState(false)
 
   useEffect(() => {
-    if (localId) { fetchTareas(); fetchPendientesAyer(); fetchVendedores() }
+    if (localId) { generarRecurrentes().then(() => { fetchTareas(); fetchPendientesAyer(); fetchVendedores() }) }
   }, [localId])
+
+  async function generarRecurrentes() {
+    const { data: plantillas } = await supabase
+      .from('tareas_plantilla').select('*').eq('local_id', localId).eq('activa', true)
+    if (!plantillas?.length) return
+
+    const hoyDate = new Date()
+    const diaSemana = hoyDate.getDay()   // 0=dom
+    const diaMes = hoyDate.getDate()
+
+    const paraHoy = plantillas.filter(p => {
+      if (p.frecuencia === 'diaria') return true
+      if (p.frecuencia === 'semanal') return p.dias_semana?.includes(diaSemana)
+      if (p.frecuencia === 'mensual') return p.dia_mes === diaMes
+      return false
+    })
+    if (!paraHoy.length) return
+
+    const { data: existentes } = await supabase
+      .from('tareas').select('titulo').eq('local_id', localId).eq('fecha', hoy)
+    const titulosExistentes = new Set(existentes?.map(t => t.titulo) ?? [])
+
+    const nuevas = paraHoy.filter(p => !titulosExistentes.has(p.titulo))
+    if (!nuevas.length) return
+
+    await supabase.from('tareas').insert(nuevas.map(p => ({
+      titulo: p.titulo, tipo: p.tipo, turno: p.turno, prioridad: p.prioridad,
+      local_id: localId, fecha: hoy, creado_por: usuario.id,
+    })))
+  }
 
   async function fetchTareas() {
     setLoading(true)
