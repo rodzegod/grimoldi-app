@@ -16,9 +16,14 @@ const PRIORIDAD_COLOR = {
 export default function GestionTareas() {
   const { usuario } = useAuth()
   const { localId } = useLocal()
+  const hoy = new Date().toISOString().split('T')[0]
+
   const [tareas, setTareas] = useState([])
+  const [pendientesAyer, setPendientesAyer] = useState([])
   const [vendedores, setVendedores] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // Modal nueva tarea
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
     titulo: '', tipo: 'Operativo', turno: 'mañana',
@@ -26,35 +31,48 @@ export default function GestionTareas() {
   })
   const [guardando, setGuardando] = useState(false)
 
+  // Modal derivar tarea
+  const [derivando, setDerivando] = useState(null) // tarea a derivar
+  const [derivarAsignado, setDerivarAsignado] = useState('')
+  const [derivandoOk, setDerivandoOk] = useState(false)
+
   useEffect(() => {
-    if (localId) { fetchTareas(); fetchVendedores() }
+    if (localId) { fetchTareas(); fetchPendientesAyer(); fetchVendedores() }
   }, [localId])
 
   async function fetchTareas() {
     setLoading(true)
-    const hoy = new Date().toISOString().split('T')[0]
     const { data } = await supabase
       .from('tareas')
       .select(`*, usuarios!tareas_asignado_a_fkey(nombre)`)
       .eq('local_id', localId)
       .eq('fecha', hoy)
       .order('created_at')
-    // Ordenar por prioridad client-side
     const ORDEN = { Urgente: 0, Importante: 1, Relevante: 2 }
     const sorted = (data ?? []).sort((a, b) => (ORDEN[a.prioridad] ?? 3) - (ORDEN[b.prioridad] ?? 3))
     setTareas(sorted)
     setLoading(false)
   }
 
+  async function fetchPendientesAyer() {
+    const { data } = await supabase
+      .from('tareas')
+      .select(`*, usuarios!tareas_asignado_a_fkey(nombre)`)
+      .eq('local_id', localId)
+      .eq('estado', 'pendiente_derivar')
+      .lt('fecha', hoy)
+      .order('fecha', { ascending: false })
+    setPendientesAyer(data ?? [])
+  }
+
   async function fetchVendedores() {
-    // Requiere policy "encargado ve usuarios del local" en Supabase
     const { data, error } = await supabase
       .from('usuarios')
       .select('id, nombre, rol')
       .eq('local_id', localId)
       .in('rol', ['vendedor', 'encargado'])
       .order('nombre')
-    if (error) console.warn('Sin acceso a usuarios del local — ejecutar supabase-etapa2.sql', error.message)
+    if (error) console.warn('Sin acceso a usuarios del local:', error.message)
     setVendedores(data ?? [])
   }
 
@@ -66,7 +84,7 @@ export default function GestionTareas() {
       asignado_a: form.asignado_a || null,
       creado_por: usuario.id,
       local_id: localId,
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: hoy,
     })
     setGuardando(false)
     if (!error) {
@@ -79,6 +97,42 @@ export default function GestionTareas() {
   async function eliminar(id) {
     await supabase.from('tareas').delete().eq('id', id)
     fetchTareas()
+  }
+
+  function abrirDerivar(tarea) {
+    setDerivando(tarea)
+    setDerivarAsignado(tarea.asignado_a ?? '')
+    setDerivandoOk(false)
+  }
+
+  async function confirmarDerivacion() {
+    if (!derivando) return
+    setDerivandoOk(false)
+
+    // 1. Crear tarea nueva para hoy
+    await supabase.from('tareas').insert({
+      titulo: derivando.titulo,
+      tipo: derivando.tipo,
+      turno: derivando.turno,
+      prioridad: derivando.prioridad,
+      asignado_a: derivarAsignado || derivando.asignado_a || null,
+      creado_por: usuario.id,
+      local_id: localId,
+      fecha: hoy,
+    })
+
+    // 2. Marcar la original como completada con nota implícita en completado_at
+    await supabase.from('tareas').update({
+      estado: 'completada',
+      completado_at: new Date().toISOString(),
+    }).eq('id', derivando.id)
+
+    setDerivandoOk(true)
+    setTimeout(() => {
+      setDerivando(null)
+      fetchTareas()
+      fetchPendientesAyer()
+    }, 1000)
   }
 
   const grupos = PRIORIDADES.reduce((acc, p) => {
@@ -96,6 +150,84 @@ export default function GestionTareas() {
         </button>
       </div>
 
+      {/* ── Sección Pendientes de ayer ── */}
+      {pendientesAyer.length > 0 && (
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 bg-amber-400 rounded-full" />
+            <p className="text-xs font-bold text-amber-600 uppercase tracking-wide">
+              Pendientes de ayer ({pendientesAyer.length})
+            </p>
+          </div>
+          <div className="space-y-2">
+            {pendientesAyer.map(t => (
+              <div key={t.id} className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{t.titulo}</p>
+                  <p className="text-xs text-gray-400">
+                    {TIPO_LABEL[t.tipo] ?? t.tipo} · {t.turno} · {t.usuarios?.nombre ?? 'Sin asignar'} · {t.fecha}
+                  </p>
+                </div>
+                <button
+                  onClick={() => abrirDerivar(t)}
+                  className="text-xs bg-black text-white rounded-xl px-3 py-2 whitespace-nowrap shrink-0"
+                >
+                  Derivar →
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal derivar ── */}
+      {derivando && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-5">
+            {derivandoOk ? (
+              <div className="text-center py-4">
+                <p className="text-4xl mb-2">✓</p>
+                <p className="font-bold">Derivada a hoy</p>
+              </div>
+            ) : (
+              <>
+                <h3 className="font-bold mb-1">Derivar al día de hoy</h3>
+                <p className="text-sm text-gray-600 mb-4 truncate">{derivando.titulo}</p>
+
+                <label className="block text-xs text-gray-500 mb-1">Reasignar a</label>
+                <select
+                  value={derivarAsignado}
+                  onChange={e => setDerivarAsignado(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-black bg-white mb-4"
+                >
+                  <option value="">— Mantener asignado actual —</option>
+                  {vendedores.map(v => (
+                    <option key={v.id} value={v.id}>{v.nombre} ({v.rol})</option>
+                  ))}
+                </select>
+
+                <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-500 mb-4 space-y-1">
+                  <p>• Se creará una tarea nueva para <strong>hoy</strong></p>
+                  <p>• La tarea original quedará marcada como <strong>completada</strong></p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={() => setDerivando(null)}
+                    className="flex-1 border border-gray-200 rounded-xl py-3 text-sm">
+                    Cancelar
+                  </button>
+                  <button onClick={confirmarDerivacion}
+                    className="flex-1 bg-black text-white rounded-xl py-3 text-sm font-bold">
+                    Confirmar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal nueva tarea ── */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
           <div className="bg-white rounded-t-2xl w-full max-w-lg p-5 pb-8">
@@ -106,7 +238,6 @@ export default function GestionTareas() {
                 onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-black"
               />
-              {/* Tipo */}
               <div className="grid grid-cols-3 gap-2">
                 {TIPOS_DB.map(t => (
                   <button key={t} type="button"
@@ -115,7 +246,6 @@ export default function GestionTareas() {
                   >{TIPO_LABEL[t]}</button>
                 ))}
               </div>
-              {/* Turno */}
               <div className="grid grid-cols-3 gap-2">
                 {TURNOS.map(t => (
                   <button key={t} type="button"
@@ -124,7 +254,6 @@ export default function GestionTareas() {
                   >{t}</button>
                 ))}
               </div>
-              {/* Prioridad */}
               <div className="grid grid-cols-3 gap-2">
                 {PRIORIDADES.map(p => (
                   <button key={p} type="button"
@@ -133,7 +262,6 @@ export default function GestionTareas() {
                   >{p}</button>
                 ))}
               </div>
-              {/* Asignado a */}
               <select value={form.asignado_a}
                 onChange={e => setForm(f => ({ ...f, asignado_a: e.target.value }))}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-black bg-white"
@@ -143,7 +271,7 @@ export default function GestionTareas() {
               </select>
               {vendedores.length === 0 && (
                 <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
-                  Sin vendedores cargados. Ejecutá supabase-etapa2.sql en el dashboard.
+                  Sin vendedores — ejecutar supabase-etapa2.sql en el dashboard.
                 </p>
               )}
               <div className="flex gap-2 pt-1">
@@ -159,6 +287,7 @@ export default function GestionTareas() {
         </div>
       )}
 
+      {/* ── Lista tareas de hoy ── */}
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin" />
@@ -175,21 +304,25 @@ export default function GestionTareas() {
               <div className="space-y-2">
                 {grupos[p].map(tarea => (
                   <div key={tarea.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{tarea.titulo}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{tarea.titulo}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {TIPO_LABEL[tarea.tipo] ?? tarea.tipo} · {tarea.turno} · {tarea.usuarios?.nombre ?? 'Sin asignar'}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <span className={`text-xs rounded-full px-2 py-0.5 ${
                         tarea.estado === 'completada' ? 'bg-emerald-100 text-emerald-700' :
                         tarea.estado === 'en_progreso' ? 'bg-amber-100 text-amber-700' :
+                        tarea.estado === 'pendiente_derivar' ? 'bg-amber-100 text-amber-600' :
                         'bg-gray-100 text-gray-500'
                       }`}>
-                        {tarea.estado === 'completada' ? '✓' : tarea.estado === 'en_progreso' ? '▶' : '○'}
+                        {tarea.estado === 'completada' ? '✓' :
+                         tarea.estado === 'en_progreso' ? '▶' :
+                         tarea.estado === 'pendiente_derivar' ? '⏸' : '○'}
                       </span>
-                      <button onClick={() => eliminar(tarea.id)} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
+                      <button onClick={() => eliminar(tarea.id)}
+                        className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
                     </div>
                   </div>
                 ))}

@@ -8,6 +8,7 @@ export default function MapaLocal() {
   const { localId } = useLocal()
   const [zonas, setZonas] = useState([])
   const [incidenciasPorZona, setIncidenciasPorZona] = useState({})
+  const [stockMap, setStockMap] = useState({}) // key: `${producto_id}-${zona_id}` → cantidad neta
   const [loading, setLoading] = useState(true)
   const [zonaOpen, setZonaOpen] = useState(null)
 
@@ -22,7 +23,7 @@ export default function MapaLocal() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: zonasData }, { data: incData }] = await Promise.all([
+    const [{ data: zonasData }, { data: incData }, { data: movData }] = await Promise.all([
       supabase
         .from('zonas')
         .select(`*, zona_productos(producto_id, productos(codigo, modelo, medida, familia, descripcion))`)
@@ -33,15 +34,29 @@ export default function MapaLocal() {
         .select('zona_id')
         .eq('local_id', localId)
         .in('estado', ['abierta', 'en_proceso']),
+      supabase
+        .from('movimientos_stock')
+        .select('producto_id, zona_id, tipo, cantidad')
+        .eq('local_id', localId),
     ])
 
+    // Incidencias por zona
     const conteo = {}
     ;(incData ?? []).forEach(i => {
       if (i.zona_id) conteo[i.zona_id] = (conteo[i.zona_id] ?? 0) + 1
     })
 
+    // Stock neto por producto+zona
+    const stock = {}
+    ;(movData ?? []).forEach(m => {
+      const key = `${m.producto_id}-${m.zona_id}`
+      const delta = m.tipo === 'entrada' ? (m.cantidad ?? 1) : -(m.cantidad ?? 1)
+      stock[key] = (stock[key] ?? 0) + delta
+    })
+
     setZonas(zonasData ?? [])
     setIncidenciasPorZona(conteo)
+    setStockMap(stock)
     setLoading(false)
   }
 
@@ -64,6 +79,12 @@ export default function MapaLocal() {
     })
     setGuardandoMov(false)
     if (!error) {
+      // Actualizar stock localmente sin refetch completo
+      const key = `${modal.productoId}-${modal.zonaId}`
+      setStockMap(prev => ({
+        ...prev,
+        [key]: (prev[key] ?? 0) + (modal.tipo === 'entrada' ? 1 : -1),
+      }))
       setModal(null)
       setMotivo('')
     }
@@ -163,8 +184,12 @@ export default function MapaLocal() {
                       productos.map(zp => {
                         const p = zp.productos
                         const nombreProd = `${p?.codigo} ${p?.modelo} T${p?.medida}`
+                        const stockKey = `${zp.producto_id}-${zona.id}`
+                        const stockActual = stockMap[stockKey] ?? 0
+
                         return (
-                          <div key={zp.producto_id} className="px-4 py-3 flex items-start gap-3">
+                          <div key={zp.producto_id} className="px-4 py-3 flex items-center gap-3">
+                            {/* Info producto */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="font-mono text-xs text-gray-400 shrink-0">{p?.codigo}</span>
@@ -175,16 +200,24 @@ export default function MapaLocal() {
                               )}
                               <p className="text-xs text-gray-300">{p?.familia}</p>
                             </div>
-                            {/* Botones entrada / salida */}
-                            <div className="flex gap-1.5 shrink-0">
+
+                            {/* Controles de stock: [+] [número] [−] */}
+                            <div className="flex items-center gap-1 shrink-0">
                               <button
                                 onClick={() => abrirModal('entrada', zp.producto_id, zona.id, nombreProd)}
-                                className="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-lg text-sm font-bold hover:bg-emerald-100 transition flex items-center justify-center"
+                                className="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-lg text-base font-bold hover:bg-emerald-100 transition flex items-center justify-center"
                                 title="Entrada de stock"
                               >+</button>
+
+                              {/* Cantidad neta */}
+                              <span className={`w-9 text-center text-lg font-black tabular-nums
+                                ${stockActual > 0 ? 'text-emerald-600' : stockActual < 0 ? 'text-red-500' : 'text-gray-300'}`}>
+                                {stockActual}
+                              </span>
+
                               <button
                                 onClick={() => abrirModal('salida', zp.producto_id, zona.id, nombreProd)}
-                                className="w-8 h-8 bg-red-50 text-red-500 rounded-lg text-sm font-bold hover:bg-red-100 transition flex items-center justify-center"
+                                className="w-8 h-8 bg-red-50 text-red-500 rounded-lg text-base font-bold hover:bg-red-100 transition flex items-center justify-center"
                                 title="Salida de stock"
                               >−</button>
                             </div>

@@ -20,6 +20,7 @@ export default function MisTareas() {
   const [tareas, setTareas] = useState([])
   const [loading, setLoading] = useState(true)
   const [turno, setTurno] = useState('mañana')
+  const [modalTarea, setModalTarea] = useState(null) // tarea seleccionada para el popup
 
   useEffect(() => {
     if (usuario) fetchTareas()
@@ -41,36 +42,83 @@ export default function MisTareas() {
     setLoading(false)
   }
 
-  async function cambiarEstado(id, estadoActual) {
-    const siguiente = estadoActual === 'pendiente' ? 'en_progreso'
-      : estadoActual === 'en_progreso' ? 'completada'
-      : 'pendiente'
+  function tocarTarea(tarea) {
+    // Si ya está completada o derivada, toque vuelve a pendiente directamente
+    if (tarea.estado === 'completada' || tarea.estado === 'pendiente_derivar') {
+      marcarEstado(tarea.id, 'pendiente', null)
+      return
+    }
+    // Si está pendiente → en_progreso directo
+    if (tarea.estado === 'pendiente') {
+      marcarEstado(tarea.id, 'en_progreso', null)
+      return
+    }
+    // Si está en_progreso → mostrar modal con opciones
+    setModalTarea(tarea)
+  }
 
-    const extra = siguiente === 'completada'
-      ? { completado_at: new Date().toISOString() }
-      : siguiente === 'pendiente' ? { completado_at: null } : {}
-
-    await supabase
-      .from('tareas')
-      .update({ estado: siguiente, ...extra })
-      .eq('id', id)
+  async function marcarEstado(id, estado, completado_at) {
+    await supabase.from('tareas').update({
+      estado,
+      completado_at: completado_at ?? null,
+    }).eq('id', id)
+    setModalTarea(null)
     fetchTareas()
   }
 
-  const pendientes = tareas.filter(t => t.estado !== 'completada')
+  async function marcarHecha() {
+    await marcarEstado(modalTarea.id, 'completada', new Date().toISOString())
+  }
+
+  async function marcarPendienteDerivada() {
+    await marcarEstado(modalTarea.id, 'pendiente_derivar', null)
+  }
+
+  const activas = tareas.filter(t => t.estado !== 'completada' && t.estado !== 'pendiente_derivar')
+  const derivadas = tareas.filter(t => t.estado === 'pendiente_derivar')
   const completadas = tareas.filter(t => t.estado === 'completada')
 
   return (
     <div>
+      {/* Modal de completado */}
+      {modalTarea && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-5">
+            <p className="font-bold text-base mb-1">{modalTarea.titulo}</p>
+            <p className="text-xs text-gray-400 mb-5">
+              {TIPO_LABEL[modalTarea.tipo] ?? modalTarea.tipo} · {modalTarea.prioridad}
+            </p>
+
+            <div className="space-y-2">
+              <button
+                onClick={marcarHecha}
+                className="w-full bg-black text-white rounded-xl py-3.5 text-sm font-bold flex items-center justify-center gap-2"
+              >
+                <span className="text-base">✓</span> Hecha
+              </button>
+              <button
+                onClick={marcarPendienteDerivada}
+                className="w-full bg-amber-50 text-amber-700 border border-amber-200 rounded-xl py-3.5 text-sm font-bold"
+              >
+                Quedó pendiente
+              </button>
+              <button
+                onClick={() => setModalTarea(null)}
+                className="w-full text-gray-400 py-2 text-sm"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">Mis Tareas</h1>
         <div className="flex rounded-lg overflow-hidden border border-gray-200 text-sm">
           {['mañana', 'tarde'].map(t => (
-            <button
-              key={t}
-              onClick={() => setTurno(t)}
-              className={`px-3 py-1.5 capitalize ${turno === t ? 'bg-black text-white' : 'text-gray-500'}`}
-            >
+            <button key={t} onClick={() => setTurno(t)}
+              className={`px-3 py-1.5 capitalize ${turno === t ? 'bg-black text-white' : 'text-gray-500'}`}>
               {t}
             </button>
           ))}
@@ -88,14 +136,28 @@ export default function MisTareas() {
         </div>
       ) : (
         <div className="space-y-3">
-          {pendientes.map(tarea => (
-            <TareaCard key={tarea.id} tarea={tarea} onChange={cambiarEstado} />
+          {activas.map(tarea => (
+            <TareaCard key={tarea.id} tarea={tarea} onTocar={tocarTarea} />
           ))}
+
+          {derivadas.length > 0 && (
+            <>
+              <p className="text-xs text-amber-600 font-medium mt-4 mb-2">
+                Pendiente de derivar ({derivadas.length})
+              </p>
+              {derivadas.map(tarea => (
+                <TareaCard key={tarea.id} tarea={tarea} onTocar={tocarTarea} />
+              ))}
+            </>
+          )}
+
           {completadas.length > 0 && (
             <>
-              <p className="text-xs text-gray-400 font-medium mt-4 mb-2">Completadas ({completadas.length})</p>
+              <p className="text-xs text-gray-400 font-medium mt-4 mb-2">
+                Completadas ({completadas.length})
+              </p>
               {completadas.map(tarea => (
-                <TareaCard key={tarea.id} tarea={tarea} onChange={cambiarEstado} />
+                <TareaCard key={tarea.id} tarea={tarea} onTocar={tocarTarea} />
               ))}
             </>
           )}
@@ -105,20 +167,31 @@ export default function MisTareas() {
   )
 }
 
-function TareaCard({ tarea, onChange }) {
+function TareaCard({ tarea, onTocar }) {
   const isCompletada = tarea.estado === 'completada'
+  const isDerivada = tarea.estado === 'pendiente_derivar'
+
+  const iconEstado = isCompletada ? '✓'
+    : isDerivada ? '⏸'
+    : tarea.estado === 'en_progreso' ? null
+    : null
+
+  const btnClass = isCompletada
+    ? 'bg-black border-black text-white'
+    : isDerivada
+    ? 'bg-amber-100 border-amber-400 text-amber-600'
+    : tarea.estado === 'en_progreso'
+    ? 'border-amber-500 bg-amber-50'
+    : 'border-gray-300'
 
   return (
-    <div className={`rounded-xl border p-4 ${isCompletada ? 'opacity-50' : ''} bg-white`}>
+    <div className={`rounded-xl border p-4 bg-white ${isCompletada ? 'opacity-50' : ''}`}>
       <div className="flex items-start gap-3">
         <button
-          onClick={() => onChange(tarea.id, tarea.estado)}
-          className={`mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition
-            ${tarea.estado === 'completada' ? 'bg-black border-black text-white'
-              : tarea.estado === 'en_progreso' ? 'border-amber-500 bg-amber-50'
-              : 'border-gray-300'}`}
+          onClick={() => onTocar(tarea)}
+          className={`mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${btnClass}`}
         >
-          {tarea.estado === 'completada' && <span className="text-xs">✓</span>}
+          {iconEstado && <span className="text-[10px] leading-none">{iconEstado}</span>}
           {tarea.estado === 'en_progreso' && <span className="w-2 h-2 bg-amber-500 rounded-full" />}
         </button>
         <div className="flex-1 min-w-0">
@@ -132,6 +205,9 @@ function TareaCard({ tarea, onChange }) {
             <span className={`text-xs border rounded-full px-2 py-0.5 ${PRIORIDAD_COLOR[tarea.prioridad] ?? ''}`}>
               {tarea.prioridad}
             </span>
+            {isDerivada && (
+              <span className="text-xs text-amber-600 font-medium">pendiente de derivar</span>
+            )}
           </div>
         </div>
       </div>
