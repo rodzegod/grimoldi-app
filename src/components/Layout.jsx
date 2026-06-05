@@ -7,21 +7,22 @@ import { supabase } from '../lib/supabase'
 const NAV = {
   vendedor: [
     { to: '/vendedor/tareas',              label: 'Tareas',    icon: '✓' },
-    { to: '/vendedor/apertura',            label: 'Apertura',  icon: '☑' },
+    { to: '/vendedor/apertura',            label: 'Apertura/C', icon: '☑' },
     { to: '/vendedor/incidencias/nueva',   label: 'Reportar',  icon: '+' },
     { to: '/vendedor/mapa',                label: 'Mapa',      icon: '⊞' },
     { to: '/vendedor/novedades',           label: 'Novedades', icon: '📋', badge: 'novedades' },
     { to: '/vendedor/horario',             label: 'Horario',   icon: '🗓' },
   ],
   encargado: [
-    { to: '/encargado/tareas',             label: 'Tareas',    icon: '✓' },
-    { to: '/encargado/incidencias',        label: 'Inciden.',  icon: '!' },
-    { to: '/encargado/aperturas',          label: 'Apertura',  icon: '☑' },
-    { to: '/encargado/ventas',             label: 'Ventas',    icon: '$' },
-    { to: '/encargado/comunicados',        label: 'Comunic.',  icon: '📢', badge: 'movimientos' },
-    { to: '/encargado/horarios',           label: 'Horarios',  icon: '🗓' },
-    { to: '/encargado/recurrentes',        label: 'Recurrentes', icon: '↻' },
-    { to: '/encargado/zonas',             label: 'Zonas',     icon: '⊞' },
+    { to: '/encargado/tareas',      label: 'Tareas',     icon: '✓' },
+    { to: '/encargado/incidencias', label: 'Inciden.',   icon: '!' },
+    { to: '/encargado/aperturas',   label: 'Apertura/C', icon: '☑' },
+    { to: '/encargado/ventas',      label: 'Ventas',     icon: '$' },
+    { to: '/encargado/stock',       label: 'Stock',      icon: '📦' },
+    { to: '/encargado/comunicados', label: 'Comunic.',   icon: '📢', badge: 'movimientos' },
+    { to: '/encargado/horarios',    label: 'Horarios',   icon: '🗓' },
+    { to: '/encargado/recurrentes', label: 'Recurrentes', icon: '↻' },
+    { to: '/encargado/zonas',       label: 'Zonas',      icon: '⊞' },
   ],
   supervisor: [
     { to: '/supervisor/dashboard',         label: 'Dashboard', icon: '◈' },
@@ -29,10 +30,10 @@ const NAV = {
     { to: '/supervisor/reportes',          label: 'Reportes',  icon: '↓' },
   ],
   admin: [
-    { to: '/admin/catalogo',              label: 'Catálogo',  icon: '⬆' },
-    { to: '/admin/stock',                  label: 'Stock',     icon: '📦' },
-    { to: '/admin/usuarios',              label: 'Usuarios',  icon: '◎' },
-    { to: '/encargado/zonas',             label: 'Zonas',     icon: '⊞' },
+    { to: '/admin/catalogo',   label: 'Catálogo',  icon: '⬆' },
+    { to: '/admin/usuarios',   label: 'Usuarios',  icon: '◎' },
+    { to: '/encargado/zonas',  label: 'Zonas',     icon: '⊞' },
+    { to: '/encargado/stock',  label: 'Stock',     icon: '📦' },
   ],
 }
 

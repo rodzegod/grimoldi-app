@@ -53,6 +53,29 @@ export default function TareasRecurrentes() {
     } else {
       await supabase.from('tareas_plantilla').insert(payload)
     }
+
+    // Si aplica a hoy, generar la tarea inmediatamente
+    const hoy = new Date().toISOString().split('T')[0]
+    const hoyDate = new Date()
+    const diaSemana = hoyDate.getDay()
+    const diaMes = hoyDate.getDate()
+    const aplicaHoy =
+      form.frecuencia === 'diaria' ||
+      (form.frecuencia === 'semanal' && form.dias_semana.includes(diaSemana)) ||
+      (form.frecuencia === 'mensual' && form.dia_mes === diaMes)
+
+    if (aplicaHoy && !editId) {
+      // Verificar si ya existe tarea con ese título hoy
+      const { data: existente } = await supabase
+        .from('tareas').select('id').eq('local_id', localId).eq('fecha', hoy).eq('titulo', form.titulo).single()
+      if (!existente) {
+        await supabase.from('tareas').insert({
+          titulo: form.titulo, tipo: form.tipo, turno: form.turno, prioridad: form.prioridad,
+          local_id: localId, fecha: hoy, creado_por: usuario.id,
+        })
+      }
+    }
+
     setGuardando(false)
     setShowForm(false)
     setForm(FORM_DEFAULT)

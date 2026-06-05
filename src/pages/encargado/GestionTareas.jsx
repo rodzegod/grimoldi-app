@@ -30,6 +30,7 @@ export default function GestionTareas() {
     prioridad: 'Importante', asignado_a: '',
   })
   const [guardando, setGuardando] = useState(false)
+  const [generando, setGenerando] = useState(false)
 
   // Modal derivar tarea
   const [derivando, setDerivando] = useState(null) // tarea a derivar
@@ -40,34 +41,43 @@ export default function GestionTareas() {
     if (localId) { generarRecurrentes().then(() => { fetchTareas(); fetchPendientesAyer(); fetchVendedores() }) }
   }, [localId])
 
-  async function generarRecurrentes() {
+  async function generarRecurrentes(mostrarFeedback = false) {
+    if (mostrarFeedback) setGenerando(true)
     const { data: plantillas } = await supabase
       .from('tareas_plantilla').select('*').eq('local_id', localId).eq('activa', true)
-    if (!plantillas?.length) return
+    if (!plantillas?.length) { if (mostrarFeedback) setGenerando(false); return 0 }
 
     const hoyDate = new Date()
-    const diaSemana = hoyDate.getDay()   // 0=dom
+    const diaSemana = hoyDate.getDay()
     const diaMes = hoyDate.getDate()
 
     const paraHoy = plantillas.filter(p => {
       if (p.frecuencia === 'diaria') return true
-      if (p.frecuencia === 'semanal') return p.dias_semana?.includes(diaSemana)
+      if (p.frecuencia === 'semanal') return Array.isArray(p.dias_semana) && p.dias_semana.includes(diaSemana)
       if (p.frecuencia === 'mensual') return p.dia_mes === diaMes
       return false
     })
-    if (!paraHoy.length) return
+    if (!paraHoy.length) { if (mostrarFeedback) setGenerando(false); return 0 }
 
     const { data: existentes } = await supabase
       .from('tareas').select('titulo').eq('local_id', localId).eq('fecha', hoy)
     const titulosExistentes = new Set(existentes?.map(t => t.titulo) ?? [])
 
     const nuevas = paraHoy.filter(p => !titulosExistentes.has(p.titulo))
-    if (!nuevas.length) return
+    if (!nuevas.length) { if (mostrarFeedback) setGenerando(false); return 0 }
 
     await supabase.from('tareas').insert(nuevas.map(p => ({
       titulo: p.titulo, tipo: p.tipo, turno: p.turno, prioridad: p.prioridad,
       local_id: localId, fecha: hoy, creado_por: usuario.id,
     })))
+    if (mostrarFeedback) setGenerando(false)
+    return nuevas.length
+  }
+
+  async function generarManual() {
+    const n = await generarRecurrentes(true)
+    await fetchTareas()
+    if (n === 0) alert('No hay plantillas pendientes de generar para hoy')
   }
 
   async function fetchTareas() {
@@ -174,10 +184,17 @@ export default function GestionTareas() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">Gestión de Tareas</h1>
-        <button onClick={() => setShowForm(true)}
-          className="bg-black text-white text-sm rounded-xl px-4 py-2">
-          + Nueva
-        </button>
+        <div className="flex gap-2">
+          <button onClick={generarManual} disabled={generando}
+            title="Generar tareas recurrentes de hoy"
+            className="border border-gray-200 text-gray-500 text-sm rounded-xl px-3 py-2 hover:border-black transition disabled:opacity-50">
+            {generando ? '...' : '↻'}
+          </button>
+          <button onClick={() => setShowForm(true)}
+            className="bg-black text-white text-sm rounded-xl px-4 py-2">
+            + Nueva
+          </button>
+        </div>
       </div>
 
       {/* ── Sección Pendientes de ayer ── */}

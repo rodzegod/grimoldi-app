@@ -77,7 +77,7 @@ export default function App() {
           {/* Admin */}
           <Route path="/admin/catalogo"  element={<W roles={['admin']}><ImportarCatalogo /></W>} />
           <Route path="/admin/usuarios"  element={<W roles={['admin']}><GestionUsuarios /></W>} />
-          <Route path="/admin/stock"     element={<W roles={['admin','supervisor']}><ControlStock /></W>} />
+          <Route path="/encargado/stock"  element={<W roles={['encargado','admin','supervisor']}><ControlStock /></W>} />
 
           <Route path="/no-autorizado" element={
             <div className="min-h-screen flex items-center justify-center">
