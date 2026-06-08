@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useLocal } from '../../hooks/useLocal'
 
@@ -13,17 +13,26 @@ export default function VistaAperturas() {
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
   const [aperturas, setAperturas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const intervalRef = useRef(null)
 
-  useEffect(() => { if (localId) fetchAperturas() }, [localId, fecha])
+  useEffect(() => {
+    if (!localId) return
+    fetchAperturas()
+    // Auto-refresh cada 30s para ver actualizaciones del vendedor en cuasi-tiempo real
+    intervalRef.current = setInterval(fetchAperturas, 30000)
+    return () => clearInterval(intervalRef.current)
+  }, [localId, fecha])
 
   async function fetchAperturas() {
-    setLoading(true)
-    const { data } = await supabase
+    setError('')
+    const { data, error: fetchErr } = await supabase
       .from('aperturas')
       .select(`*, apertura_items(*), usuarios!aperturas_registrado_por_fkey(nombre)`)
       .eq('local_id', localId)
       .eq('fecha', fecha)
       .order('turno')
+    if (fetchErr) setError('Error al cargar: ' + fetchErr.message)
     setAperturas(data ?? [])
     setLoading(false)
   }
@@ -33,11 +42,24 @@ export default function VistaAperturas() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">Aperturas del día</h1>
-        <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
-          max={new Date().toISOString().split('T')[0]}
-          className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-black" />
+        <h1 className="text-xl font-bold">Apertura / Cierre</h1>
+        <div className="flex items-center gap-2">
+          <button onClick={fetchAperturas}
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-400 hover:border-black transition">
+            ↻
+          </button>
+          <input type="date" value={fecha} onChange={e => { setLoading(true); setFecha(e.target.value) }}
+            max={new Date().toISOString().split('T')[0]}
+            className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-black" />
+        </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 text-sm text-red-600 flex justify-between">
+          {error}
+          <button onClick={() => setError('')} className="text-red-400 ml-2">✕</button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-10">
@@ -80,12 +102,12 @@ export default function VistaAperturas() {
                       Registrado por {ap.usuarios?.nombre ?? '—'}
                     </p>
                     <div className="divide-y divide-gray-100">
-                      {items.filter(i => !i.completado || i.observacion).map(item => (
+                      {items.map(item => (
                         <div key={item.id} className="px-4 py-2.5 flex items-start gap-2">
-                          <span className={`text-base mt-0.5 ${item.completado ? 'text-emerald-500' : 'text-gray-300'}`}>
+                          <span className={`text-base mt-0.5 shrink-0 ${item.completado ? 'text-emerald-500' : 'text-gray-300'}`}>
                             {item.completado ? '✓' : '○'}
                           </span>
-                          <div>
+                          <div className="min-w-0">
                             <p className={`text-xs ${item.completado ? 'text-gray-400 line-through' : 'text-gray-700 font-medium'}`}>
                               {item.tarea}
                             </p>
@@ -95,9 +117,6 @@ export default function VistaAperturas() {
                           </div>
                         </div>
                       ))}
-                      {items.every(i => i.completado) && (
-                        <p className="text-xs text-emerald-600 px-4 py-3 font-medium">Todos los ítems completados</p>
-                      )}
                     </div>
                   </>
                 )}

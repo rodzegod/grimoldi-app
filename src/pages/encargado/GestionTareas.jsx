@@ -31,6 +31,8 @@ export default function GestionTareas() {
   })
   const [guardando, setGuardando] = useState(false)
   const [generando, setGenerando] = useState(false)
+  const [genMsg, setGenMsg] = useState('')
+  const [genError, setGenError] = useState('')
 
   // Modal derivar tarea
   const [derivando, setDerivando] = useState(null) // tarea a derivar
@@ -42,10 +44,19 @@ export default function GestionTareas() {
   }, [localId])
 
   async function generarRecurrentes(mostrarFeedback = false) {
-    if (mostrarFeedback) setGenerando(true)
-    const { data: plantillas } = await supabase
+    if (mostrarFeedback) { setGenerando(true); setGenError(''); setGenMsg('') }
+
+    const { data: plantillas, error: pErr } = await supabase
       .from('tareas_plantilla').select('*').eq('local_id', localId).eq('activa', true)
-    if (!plantillas?.length) { if (mostrarFeedback) setGenerando(false); return 0 }
+
+    if (pErr) {
+      if (mostrarFeedback) { setGenError('Error al leer plantillas: ' + pErr.message); setGenerando(false) }
+      return 0
+    }
+    if (!plantillas?.length) {
+      if (mostrarFeedback) { setGenMsg('No hay plantillas activas'); setGenerando(false) }
+      return 0
+    }
 
     const hoyDate = new Date()
     const diaSemana = hoyDate.getDay()
@@ -57,27 +68,44 @@ export default function GestionTareas() {
       if (p.frecuencia === 'mensual') return p.dia_mes === diaMes
       return false
     })
-    if (!paraHoy.length) { if (mostrarFeedback) setGenerando(false); return 0 }
+
+    if (!paraHoy.length) {
+      if (mostrarFeedback) { setGenMsg('Ninguna plantilla aplica a hoy'); setGenerando(false) }
+      return 0
+    }
 
     const { data: existentes } = await supabase
       .from('tareas').select('titulo').eq('local_id', localId).eq('fecha', hoy)
     const titulosExistentes = new Set(existentes?.map(t => t.titulo) ?? [])
 
     const nuevas = paraHoy.filter(p => !titulosExistentes.has(p.titulo))
-    if (!nuevas.length) { if (mostrarFeedback) setGenerando(false); return 0 }
 
-    await supabase.from('tareas').insert(nuevas.map(p => ({
+    if (!nuevas.length) {
+      if (mostrarFeedback) { setGenMsg('Las tareas de hoy ya estaban generadas'); setGenerando(false) }
+      return 0
+    }
+
+    const { error: insErr } = await supabase.from('tareas').insert(nuevas.map(p => ({
       titulo: p.titulo, tipo: p.tipo, turno: p.turno, prioridad: p.prioridad,
       local_id: localId, fecha: hoy, creado_por: usuario.id,
     })))
-    if (mostrarFeedback) setGenerando(false)
+
+    if (insErr) {
+      if (mostrarFeedback) { setGenError('Error al insertar tareas: ' + insErr.message); setGenerando(false) }
+      return 0
+    }
+
+    if (mostrarFeedback) {
+      setGenMsg(`${nuevas.length} tarea${nuevas.length > 1 ? 's' : ''} generada${nuevas.length > 1 ? 's' : ''} ✓`)
+      setGenerando(false)
+      setTimeout(() => setGenMsg(''), 3000)
+    }
     return nuevas.length
   }
 
   async function generarManual() {
     const n = await generarRecurrentes(true)
-    await fetchTareas()
-    if (n === 0) alert('No hay plantillas pendientes de generar para hoy')
+    if (n > 0) await fetchTareas()
   }
 
   async function fetchTareas() {
@@ -318,7 +346,7 @@ export default function GestionTareas() {
               </select>
               {vendedores.length === 0 && (
                 <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
-                  Sin vendedores — ejecutar supabase-etapa2.sql en el dashboard.
+                  Sin vendedores cargados en este local. Verificá que los usuarios tengan local_id asignado.
                 </p>
               )}
               <div className="flex gap-2 pt-1">
