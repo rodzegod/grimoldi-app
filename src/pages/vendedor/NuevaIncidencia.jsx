@@ -6,11 +6,13 @@ import { useLocal } from '../../hooks/useLocal'
 import BarcodeScanner from '../../components/BarcodeScanner'
 
 const TIPOS = [
-  { value: 'talle_faltante', label: 'Talle faltante' },
-  { value: 'par_incompleto', label: 'Par incompleto' },
-  { value: 'pies_cruzados', label: 'Pies cruzados' },
-  { value: 'defecto_producto', label: 'Defecto de producto' },
-  { value: 'otro', label: 'Otro' },
+  { value: 'hurto_robo',     label: 'Hurto / Robo',       icon: '🔒' },
+  { value: 'rotura_dano',    label: 'Rotura / Daño',       icon: '💥' },
+  { value: 'faltante_stock', label: 'Faltante de stock',   icon: '📦' },
+  { value: 'error_admin',    label: 'Error administrativo', icon: '📋' },
+  { value: 'devolucion',     label: 'Devolución',          icon: '↩️' },
+  { value: 'deterioro_falla',label: 'Deterioro / Falla',   icon: '⚠️' },
+  { value: 'otro',           label: 'Otro',                icon: '•' },
 ]
 
 export default function NuevaIncidencia() {
@@ -18,9 +20,10 @@ export default function NuevaIncidencia() {
   const { localId } = useLocal()
   const navigate = useNavigate()
 
-  const [tipo, setTipo] = useState('talle_faltante')
+  const [tipo, setTipo] = useState('hurto_robo')
   const [prioridad, setPrioridad] = useState('Normal')
   const [descripcion, setDescripcion] = useState('')
+  const [unidades, setUnidades] = useState(1)
   const [busqueda, setBusqueda] = useState('')
   const [productos, setProductos] = useState([])
   const [productoSel, setProductoSel] = useState(null)
@@ -29,6 +32,7 @@ export default function NuevaIncidencia() {
   const [scanner, setScanner] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [ok, setOk] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (localId) {
@@ -57,20 +61,29 @@ export default function NuevaIncidencia() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    setError('')
+    if (tipo === 'otro' && !descripcion.trim()) {
+      setError('Para "Otro" necesitás describir qué pasó.')
+      return
+    }
+    if (unidades < 1) { setError('Las unidades deben ser al menos 1.'); return }
     setGuardando(true)
-    const { error } = await supabase.from('incidencias').insert({
+    const { error: err } = await supabase.from('incidencias').insert({
       tipo,
       prioridad,
-      descripcion: descripcion || null,
+      descripcion: descripcion.trim() || null,
+      unidades,
       producto_id: productoSel?.id ?? null,
       zona_id: zonaId || null,
       reportado_por: usuario.id,
       local_id: localId,
     })
     setGuardando(false)
-    if (!error) {
+    if (err) {
+      setError(err.message)
+    } else {
       setOk(true)
-      setTimeout(() => navigate('/vendedor/incidencias'), 1500)
+      setTimeout(() => navigate(-1), 1500)
     }
   }
 
@@ -100,18 +113,32 @@ export default function NuevaIncidencia() {
                 key={t.value}
                 type="button"
                 onClick={() => setTipo(t.value)}
-                className={`text-left text-sm px-3 py-2.5 rounded-xl border transition
+                className={`text-left text-sm px-3 py-2.5 rounded-xl border transition flex items-center gap-2
                   ${tipo === t.value ? 'bg-black text-white border-black' : 'bg-white border-gray-200'}`}
               >
-                {t.label}
+                <span>{t.icon}</span>
+                <span>{t.label}</span>
               </button>
             ))}
           </div>
         </div>
 
+        {/* Unidades */}
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Unidades afectadas</label>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setUnidades(v => Math.max(1, v - 1))}
+              className="w-10 h-10 rounded-xl border border-gray-200 text-xl font-bold flex items-center justify-center">−</button>
+            <span className="w-10 text-center text-xl font-black tabular-nums">{unidades}</span>
+            <button type="button" onClick={() => setUnidades(v => v + 1)}
+              className="w-10 h-10 rounded-xl border border-gray-200 text-xl font-bold flex items-center justify-center">+</button>
+            <span className="text-sm text-gray-400">pares / unidades</span>
+          </div>
+        </div>
+
         {/* Producto */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Producto</label>
+          <label className="block text-sm font-medium mb-1.5">Producto <span className="text-gray-400 font-normal">(opcional)</span></label>
           <div className="flex gap-2">
             <input
               type="text"
@@ -148,7 +175,7 @@ export default function NuevaIncidencia() {
 
         {/* Zona */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Zona del local</label>
+          <label className="block text-sm font-medium mb-1.5">Zona del local <span className="text-gray-400 font-normal">(opcional)</span></label>
           <select
             value={zonaId}
             onChange={e => setZonaId(e.target.value)}
@@ -170,7 +197,7 @@ export default function NuevaIncidencia() {
                 onClick={() => setPrioridad(p)}
                 className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition
                   ${prioridad === p
-                    ? p === 'Urgente' ? 'bg-red-500 text-white border-red-500' : 'bg-black text-white border-black'
+                    ? p === 'Urgente' ? 'bg-vans-red text-white border-vans-red' : 'bg-black text-white border-black'
                     : 'bg-white border-gray-200 text-gray-600'}`}
               >
                 {p === 'Urgente' ? '🔴 Urgente' : 'Normal'}
@@ -179,17 +206,22 @@ export default function NuevaIncidencia() {
           </div>
         </div>
 
-        {/* Descripción */}
+        {/* Nota */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Descripción (opcional)</label>
+          <label className="block text-sm font-medium mb-1.5">
+            {tipo === 'otro' ? 'Descripción (obligatoria)' : 'Descripción (opcional)'}
+          </label>
           <textarea
             value={descripcion}
             onChange={e => setDescripcion(e.target.value)}
-            rows={2}
-            placeholder="Detalles adicionales..."
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-black resize-none"
+            rows={tipo === 'otro' ? 3 : 2}
+            placeholder={tipo === 'otro' ? 'Describí qué pasó...' : 'Detalles adicionales...'}
+            className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-black resize-none
+              ${tipo === 'otro' && !descripcion.trim() ? 'border-red-300' : 'border-gray-200'}`}
           />
         </div>
+
+        {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
 
         <button
           type="submit"

@@ -23,11 +23,13 @@ const NAV = {
     { to: '/encargado/horarios',    label: 'Horarios',   icon: '🗓' },
     { to: '/encargado/recurrentes', label: 'Recurrentes',icon: '↻' },
     { to: '/encargado/zonas',       label: 'Zonas',      icon: '⊞' },
+    { to: '/encargado/mapa',        label: 'Mapa',       icon: '◫' },
   ],
   supervisor: [
-    { to: '/supervisor/dashboard',  label: 'Dashboard', icon: '◈' },
-    { to: '/supervisor/ventas',     label: 'Ventas',    icon: '$' },
-    { to: '/supervisor/reportes',   label: 'Reportes',  icon: '↓' },
+    { to: '/supervisor/dashboard',     label: 'Dashboard', icon: '◈' },
+    { to: '/supervisor/ventas',        label: 'Ventas',    icon: '$' },
+    { to: '/supervisor/reportes',      label: 'Reportes',  icon: '↓' },
+    { to: '/supervisor/incidencias',   label: 'Merma',     icon: '▽' },
   ],
   admin: [
     { to: '/admin/catalogo',   label: 'Catálogo',  icon: '⬆' },

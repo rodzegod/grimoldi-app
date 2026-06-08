@@ -54,6 +54,7 @@ export default function App() {
           <Route path="/vendedor/incidencias/nueva" element={<W roles={['vendedor']}><NuevaIncidencia /></W>} />
           <Route path="/vendedor/incidencias"       element={<W roles={['vendedor']}><MisIncidencias /></W>} />
           <Route path="/vendedor/mapa"              element={<W roles={['vendedor']}><MapaLocal /></W>} />
+          <Route path="/encargado/mapa"             element={<W roles={['encargado','admin']}><MapaLocal /></W>} />
           <Route path="/vendedor/apertura"          element={<W roles={['vendedor']}><Apertura /></W>} />
           <Route path="/vendedor/novedades"         element={<W roles={['vendedor']}><Novedades /></W>} />
           <Route path="/vendedor/horario"           element={<W roles={['vendedor']}><MiHorario /></W>} />
@@ -70,9 +71,10 @@ export default function App() {
           <Route path="/encargado/horarios"     element={<W roles={['encargado','admin']}><Horarios /></W>} />
 
           {/* Supervisor */}
-          <Route path="/supervisor/dashboard"  element={<W roles={['supervisor']}><Dashboard /></W>} />
-          <Route path="/supervisor/ventas"     element={<W roles={['supervisor']}><ReporteVentas readOnly={true} /></W>} />
-          <Route path="/supervisor/reportes"   element={<W roles={['supervisor']}><Reportes /></W>} />
+          <Route path="/supervisor/dashboard"     element={<W roles={['supervisor']}><Dashboard /></W>} />
+          <Route path="/supervisor/ventas"        element={<W roles={['supervisor']}><ReporteVentas readOnly={true} /></W>} />
+          <Route path="/supervisor/reportes"      element={<W roles={['supervisor']}><Reportes /></W>} />
+          <Route path="/supervisor/incidencias"   element={<W roles={['supervisor']}><BandejaIncidencias readOnly={true} /></W>} />
 
           {/* Admin */}
           <Route path="/admin/catalogo"  element={<W roles={['admin']}><ImportarCatalogo /></W>} />
