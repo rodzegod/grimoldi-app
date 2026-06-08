@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase'
 const NAV = {
   vendedor: [
     { to: '/vendedor/tareas',              label: 'Tareas',    icon: '✓' },
-    { to: '/vendedor/apertura',            label: 'Apertura/C', icon: '☑' },
+    { to: '/vendedor/apertura',            label: 'Apertura',  icon: '☑' },
     { to: '/vendedor/incidencias/nueva',   label: 'Reportar',  icon: '+' },
     { to: '/vendedor/mapa',                label: 'Mapa',      icon: '⊞' },
     { to: '/vendedor/novedades',           label: 'Novedades', icon: '📋', badge: 'novedades' },
@@ -16,18 +16,18 @@ const NAV = {
   encargado: [
     { to: '/encargado/tareas',      label: 'Tareas',     icon: '✓' },
     { to: '/encargado/incidencias', label: 'Inciden.',   icon: '!' },
-    { to: '/encargado/aperturas',   label: 'Apertura/C', icon: '☑' },
+    { to: '/encargado/aperturas',   label: 'Apertura',   icon: '☑' },
     { to: '/encargado/ventas',      label: 'Ventas',     icon: '$' },
     { to: '/encargado/stock',       label: 'Stock',      icon: '📦' },
     { to: '/encargado/comunicados', label: 'Comunic.',   icon: '📢', badge: 'movimientos' },
     { to: '/encargado/horarios',    label: 'Horarios',   icon: '🗓' },
-    { to: '/encargado/recurrentes', label: 'Recurrentes', icon: '↻' },
+    { to: '/encargado/recurrentes', label: 'Recurrentes',icon: '↻' },
     { to: '/encargado/zonas',       label: 'Zonas',      icon: '⊞' },
   ],
   supervisor: [
-    { to: '/supervisor/dashboard',         label: 'Dashboard', icon: '◈' },
-    { to: '/supervisor/ventas',            label: 'Ventas',    icon: '$' },
-    { to: '/supervisor/reportes',          label: 'Reportes',  icon: '↓' },
+    { to: '/supervisor/dashboard',  label: 'Dashboard', icon: '◈' },
+    { to: '/supervisor/ventas',     label: 'Ventas',    icon: '$' },
+    { to: '/supervisor/reportes',   label: 'Reportes',  icon: '↓' },
   ],
   admin: [
     { to: '/admin/catalogo',   label: 'Catálogo',  icon: '⬆' },
@@ -38,7 +38,6 @@ const NAV = {
 }
 
 const ROL_LABEL = { vendedor: 'Vendedor', encargado: 'Encargado', supervisor: 'Supervisor', admin: 'Admin' }
-const ROL_COLOR = { vendedor: 'bg-blue-600', encargado: 'bg-emerald-600', supervisor: 'bg-purple-600', admin: 'bg-gray-800' }
 
 export default function Layout({ children }) {
   const { usuario, signOut } = useAuth()
@@ -86,22 +85,24 @@ export default function Layout({ children }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className={`${ROL_COLOR[rol] ?? 'bg-gray-800'} text-white`}>
+    <div className="min-h-screen flex flex-col bg-vans-gray-bg">
+      {/* Header — siempre negro */}
+      <header className="bg-vans-black text-white sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
-            <p className="font-bold text-lg leading-tight">Vans Parque Brown</p>
-            <p className="text-xs opacity-75">{ROL_LABEL[rol]} · {usuario?.nombre}</p>
+            <p className="font-black text-base leading-tight tracking-wide">VANS · Parque Brown</p>
+            <p className="text-xs opacity-60 mt-0.5">{ROL_LABEL[rol]} · {usuario?.nombre}</p>
           </div>
           <div className="flex items-center gap-2">
             {rol === 'encargado' && movBadge > 0 && (
-              <span className="bg-amber-400 text-black text-xs font-bold rounded-full px-2 py-0.5">
-                {movBadge} mov
+              <span className="bg-vans-red text-white text-xs font-bold rounded-full px-2 py-0.5">
+                {movBadge}
               </span>
             )}
-            <button onClick={handleSignOut}
-              className="text-xs opacity-75 hover:opacity-100 border border-white/30 rounded px-2 py-1">
+            <button
+              onClick={handleSignOut}
+              className="text-xs opacity-65 hover:opacity-100 border border-white/25 rounded-lg px-2.5 py-1 transition"
+            >
               Salir
             </button>
           </div>
@@ -109,12 +110,12 @@ export default function Layout({ children }) {
       </header>
 
       {/* Content */}
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 pb-20">
+      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 pb-24">
         {children}
       </main>
 
-      {/* Bottom nav — scrollable */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
+      {/* Bottom nav */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-vans-gray-line z-40">
         <div className="max-w-2xl mx-auto overflow-x-auto">
           <div className="flex min-w-max">
             {links.map(({ to, label, icon, badge }) => {
@@ -125,13 +126,13 @@ export default function Layout({ children }) {
                   to={to}
                   className={({ isActive }) =>
                     `flex flex-col items-center py-2 px-3 text-[10px] font-medium transition-colors relative whitespace-nowrap
-                    ${isActive ? 'text-black' : 'text-gray-400'}`
+                    ${isActive ? 'text-vans-red' : 'text-vans-gray-text'}`
                   }
                 >
                   <span className="text-lg leading-none mb-0.5 relative">
                     {icon}
                     {count > 0 && (
-                      <span className="absolute -top-1 -right-1.5 bg-red-500 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                      <span className="absolute -top-1 -right-1.5 bg-vans-red text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
                         {count > 9 ? '9+' : count}
                       </span>
                     )}

@@ -182,7 +182,7 @@ export default function Apertura() {
           <button
             onClick={iniciarApertura}
             disabled={iniciando}
-            className="bg-black text-white rounded-xl px-8 py-3.5 text-sm font-bold disabled:opacity-50"
+            className="bg-vans-red text-white rounded-xl px-8 py-3.5 text-sm font-bold disabled:opacity-50"
           >
             {iniciando ? 'Iniciando...' : `Iniciar checklist de ${turno}`}
           </button>

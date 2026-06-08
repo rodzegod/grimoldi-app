@@ -85,7 +85,7 @@ export default function ControlStock() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">Control de Stock</h1>
         <button onClick={exportar} disabled={!comparativa.length}
-          className="bg-black text-white text-xs rounded-xl px-3 py-2 disabled:opacity-40">↓ Excel</button>
+          className="border border-gray-900 text-gray-900 text-xs rounded-xl px-3 py-2 font-medium disabled:opacity-40">↓ Excel</button>
       </div>
 
       {/* Fechas */}
@@ -223,7 +223,7 @@ export default function ControlStock() {
                 <p className="text-3xl font-black text-red-500">{agotados.reduce((s, a) => s + a.talles.length, 0)}</p>
               </div>
               <button onClick={exportar} disabled={!comparativa.length}
-                className="w-full bg-black text-white rounded-xl py-3 text-sm font-bold disabled:opacity-40">
+                className="w-full border border-gray-900 text-gray-900 rounded-xl py-3 text-sm font-medium disabled:opacity-40">
                 Exportar comparativa Excel
               </button>
             </div>

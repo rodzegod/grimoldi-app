@@ -159,8 +159,8 @@ export default function ImportarCatalogo() {
           </div>
 
           <div className="flex gap-2">
-            <button onClick={reset} className="flex-1 border border-gray-200 rounded-xl py-3 text-sm">Cancelar</button>
-            <button onClick={importar} className="flex-1 bg-black text-white rounded-xl py-3 text-sm font-bold">
+            <button onClick={reset} className="flex-1 border border-gray-900 text-gray-900 rounded-xl py-3 text-sm font-medium">Cancelar</button>
+            <button onClick={importar} className="flex-1 bg-vans-red text-white rounded-xl py-3 text-sm font-bold">
               Importar {productos.length.toLocaleString()} SKUs
             </button>
           </div>
@@ -184,7 +184,7 @@ export default function ImportarCatalogo() {
           <p className="font-bold text-lg mb-1">{error ? 'Con advertencias' : 'Importación completada'}</p>
           {error && <p className="text-sm text-amber-600 mb-3">{error}</p>}
           <p className="text-sm text-gray-400 mb-6">{productos.length.toLocaleString()} SKUs · {conStock} con stock</p>
-          <button onClick={reset} className="bg-black text-white rounded-xl px-6 py-3 text-sm font-bold">
+          <button onClick={reset} className="bg-vans-red text-white rounded-xl px-6 py-3 text-sm font-bold">
             Importar otro archivo
           </button>
         </div>

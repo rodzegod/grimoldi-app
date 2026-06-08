@@ -220,7 +220,7 @@ export default function ReporteVentas({ readOnly = false }) {
       <div className="flex items-center justify-between mb-3">
         <h1 className="text-xl font-bold">Ventas</h1>
         <button onClick={exportar} disabled={!porDia.length}
-          className="bg-black text-white text-xs rounded-xl px-3 py-2 disabled:opacity-40">↓ Excel</button>
+          className="border border-gray-900 text-gray-900 text-xs rounded-xl px-3 py-2 font-medium disabled:opacity-40">↓ Excel</button>
       </div>
 
       {/* Selector mes */}
@@ -399,7 +399,7 @@ export default function ReporteVentas({ readOnly = false }) {
                       </div>
                     </div>
                     <button type="submit" disabled={guardando || !form.vendedor_id}
-                      className="w-full bg-black text-white rounded-xl py-3 text-sm font-bold disabled:opacity-50">
+                      className="w-full bg-vans-red text-white rounded-xl py-3 text-sm font-bold disabled:opacity-50">
                       {guardando ? 'Guardando...' : guardadoOk ? '✓ Guardado' : 'Guardar'}
                     </button>
                   </form>

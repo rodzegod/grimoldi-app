@@ -76,7 +76,7 @@ export default function Comunicados() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">Comunicados</h1>
         <button onClick={() => { setForm({ titulo:'',contenido:'',fijado:false,expira_at:'' }); setEditando(null); setShowForm(true) }}
-          className="bg-black text-white text-sm rounded-xl px-4 py-2">+ Nuevo</button>
+          className="bg-vans-red text-white text-sm font-bold rounded-xl px-4 py-2">+ Nuevo</button>
       </div>
 
       {/* Modal form */}
@@ -104,9 +104,9 @@ export default function Comunicados() {
               </div>
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => { setShowForm(false); setEditando(null) }}
-                  className="flex-1 border border-gray-200 rounded-xl py-3 text-sm">Cancelar</button>
+                  className="flex-1 border border-gray-900 text-gray-900 rounded-xl py-3 text-sm font-medium">Cancelar</button>
                 <button type="submit" disabled={guardando}
-                  className="flex-1 bg-black text-white rounded-xl py-3 text-sm font-bold disabled:opacity-50">
+                  className="flex-1 bg-vans-red text-white rounded-xl py-3 text-sm font-bold disabled:opacity-50">
                   {guardando ? 'Guardando...' : editando ? 'Actualizar' : 'Publicar'}
                 </button>
               </div>
@@ -133,7 +133,7 @@ export default function Comunicados() {
               </div>
             )}
             <button onClick={() => setVerVistos(null)}
-              className="mt-4 w-full border border-gray-200 rounded-xl py-2.5 text-sm">Cerrar</button>
+              className="mt-4 w-full border border-gray-900 text-gray-900 rounded-xl py-2.5 text-sm font-medium">Cerrar</button>
           </div>
         </div>
       )}

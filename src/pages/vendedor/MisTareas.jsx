@@ -92,7 +92,7 @@ export default function MisTareas() {
             <div className="space-y-2">
               <button
                 onClick={marcarHecha}
-                className="w-full bg-black text-white rounded-xl py-3.5 text-sm font-bold flex items-center justify-center gap-2"
+                className="w-full bg-vans-red text-white rounded-xl py-3.5 text-sm font-bold flex items-center justify-center gap-2"
               >
                 <span className="text-base">✓</span> Hecha
               </button>

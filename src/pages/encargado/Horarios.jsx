@@ -227,7 +227,7 @@ export default function Horarios() {
           </button>
           <button onClick={guardarSemana} disabled={guardando}
             className={`text-xs rounded-xl px-4 py-2 font-bold disabled:opacity-50 transition
-              ${saveOk ? 'bg-emerald-500 text-white' : 'bg-black text-white'}`}>
+              ${saveOk ? 'bg-emerald-500 text-white' : 'bg-vans-red text-white'}`}>
             {guardando ? 'Guardando...' : saveOk ? '✓ Guardado' : 'Guardar'}
           </button>
         </div>

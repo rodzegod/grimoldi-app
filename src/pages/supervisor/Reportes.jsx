@@ -80,7 +80,7 @@ export default function Reportes() {
         <button
           onClick={exportar}
           disabled={datos.length === 0}
-          className="bg-black text-white text-sm rounded-xl px-4 py-2 disabled:opacity-40"
+          className="border border-gray-900 text-gray-900 text-sm rounded-xl px-4 py-2 font-medium disabled:opacity-40"
         >
           ↓ Excel
         </button>

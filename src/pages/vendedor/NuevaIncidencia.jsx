@@ -194,7 +194,7 @@ export default function NuevaIncidencia() {
         <button
           type="submit"
           disabled={guardando}
-          className="w-full bg-black text-white font-bold rounded-xl py-3.5 text-sm disabled:opacity-50"
+          className="w-full bg-vans-red text-white font-bold rounded-xl py-3.5 text-sm disabled:opacity-50"
         >
           {guardando ? 'Guardando...' : 'Reportar incidencia'}
         </button>

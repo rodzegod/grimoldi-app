@@ -109,7 +109,7 @@ export default function GestionZonas() {
           onChange={e => setNuevaZona(e.target.value)}
           className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-black"
         />
-        <button type="submit" className="bg-black text-white rounded-xl px-4 text-sm font-bold">
+        <button type="submit" className="bg-vans-red text-white rounded-xl px-4 text-sm font-bold">
           + Zona
         </button>
       </form>

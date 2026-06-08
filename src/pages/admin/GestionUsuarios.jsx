@@ -96,7 +96,7 @@ export default function GestionUsuarios() {
         <h1 className="text-xl font-bold">Gestión de Usuarios</h1>
         <button
           onClick={() => { setShowForm(true); setError(''); setOk('') }}
-          className="bg-black text-white text-sm rounded-xl px-4 py-2"
+          className="bg-vans-red text-white text-sm font-bold rounded-xl px-4 py-2"
         >
           + Usuario
         </button>
@@ -148,10 +148,10 @@ export default function GestionUsuarios() {
               {error && <p className="text-xs text-red-500 bg-red-50 p-2 rounded-lg">{error}</p>}
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => { setShowForm(false); setError('') }}
-                  className="flex-1 border border-gray-200 rounded-xl py-3 text-sm"
+                  className="flex-1 border border-gray-900 text-gray-900 rounded-xl py-3 text-sm font-medium"
                 >Cancelar</button>
                 <button type="submit" disabled={guardando}
-                  className="flex-1 bg-black text-white rounded-xl py-3 text-sm font-bold disabled:opacity-50"
+                  className="flex-1 bg-vans-red text-white rounded-xl py-3 text-sm font-bold disabled:opacity-50"
                 >
                   {guardando ? 'Creando...' : 'Crear usuario'}
                 </button>
